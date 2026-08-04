@@ -1,0 +1,16 @@
+Cargo.toml
+  h_2e4fad1f0ddac3 3
+README.md
+  h_2e4fad1f0ddac3 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "320bd00f0f340aa924de84dc8b9861b3018f5bb7",
+  "prompts": {},
+  "humans": {
+    "h_2e4fad1f0ddac3": {
+      "author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
