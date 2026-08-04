@@ -28,6 +28,13 @@ pub enum TurnstileError {
     #[error("Turnstile rejected the token without returning an error code")]
     VerificationFailed,
 
+    /// The response body exceeded the maximum size the client will buffer.
+    #[error(
+        "Turnstile API response body exceeded {} bytes",
+        crate::MAX_RESPONSE_BYTES
+    )]
+    ResponseTooLarge,
+
     /// The error originated from Legacy Hyper.
     #[error("Legacy hyper error: {0:?}")]
     LegacyHyperError(#[from] hyper_util::client::legacy::Error),

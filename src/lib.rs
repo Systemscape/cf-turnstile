@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 use connector::Connector;
 use error::{SiteVerifyErrors, TurnstileError};
-use http_body_util::{BodyExt, Full};
+use http_body_util::{BodyExt, Full, Limited};
 use hyper::{
     body::Bytes,
     header::{CONTENT_TYPE, USER_AGENT},
@@ -96,6 +96,11 @@ struct RawSiteVerifyResponse {
     cdata: Option<String>,
 }
 
+/// Maximum accepted size of a siteverify response body. The real endpoint returns
+/// a few hundred bytes; this only exists to bound what a hostile or broken upstream
+/// can make the client buffer.
+const MAX_RESPONSE_BYTES: usize = 64 * 1024;
+
 const TURNSTILE_USER_AGENT: &str = concat!(
     "cf-turnstile (",
     env!("CARGO_PKG_HOMEPAGE"),
@@ -143,7 +148,21 @@ impl TurnstileClient {
             return Err(TurnstileError::UnexpectedStatus(status));
         }
 
-        let body_bytes = response.into_body().collect().await?.to_bytes();
+        let body_bytes = match Limited::new(response.into_body(), MAX_RESPONSE_BYTES)
+            .collect()
+            .await
+        {
+            Ok(collected) => collected.to_bytes(),
+            // `Limited` boxes the inner body's error, so anything that is not a
+            // transport failure is the length limit being hit.
+            Err(err) => {
+                return Err(match err.downcast::<hyper::Error>() {
+                    Ok(err) => TurnstileError::HyperError(*err),
+                    Err(_) => TurnstileError::ResponseTooLarge,
+                })
+            }
+        };
+
         let body = serde_json::from_slice::<RawSiteVerifyResponse>(&body_bytes)?;
 
         if !body.error_codes.is_empty() {
