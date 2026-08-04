@@ -6,7 +6,7 @@ description = "A Rust client for Cloudflare Turnstile"
 homepage = "https://github.com/sycertech/cf-turnstile"
 repository = "https://github.com/sycertech/cf-turnstile"
 categories = ["api-bindings", "asynchronous", "web-programming::http-client"]
-keywords = ["cloduflare", "turnstile", "recaptcha", "captcha"]
+keywords = ["cloudflare", "turnstile", "recaptcha", "captcha"]
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
