@@ -1,10 +1,13 @@
+> [!NOTE]
+> This is an actively maintained frok of https://github.com/Fyko/cf-turnstile
+
 # cf-turnstile
 
 A Rust client for [Cloudflare Turnstile].
 
 
 # Example
-```rust,no_run
+```rust,ignore
 use cf_turnstile::{SiteVerifyRequest, TurnstileClient};
 
 let client = TurnstileClient::new("my-secret".to_string().into());
