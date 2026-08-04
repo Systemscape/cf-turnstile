@@ -54,7 +54,9 @@ async fn test_success() -> Result<()> {
         })
         .await?;
 
-    assert!(validated.success);
+    // `siteverify` returns `Err` unless the token was verified, so reaching this
+    // point is the assertion; check the payload was parsed as well.
+    assert!(!validated.timestamp.is_empty());
 
     Ok(())
 }
@@ -120,7 +122,6 @@ async fn test_integration() -> Result<()> {
         })
         .await?;
 
-    assert!(validated.success);
     assert_eq!(validated.hostname, hostname);
 
     println!("validated: {:#?}", validated);

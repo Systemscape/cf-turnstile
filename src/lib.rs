@@ -53,15 +53,17 @@ struct SiteVerifyBody<'a> {
     request: &'a SiteVerifyRequest,
 }
 
-/// Represents a succerssful response from the Turnstile API.
+/// Represents a successful response from the Turnstile API.
 ///
-/// <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#error-codes:~:text=Successful%20validation%20response>
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Deliberately neither [`Serialize`] nor [`Deserialize`]: this type is only ever
+/// produced by [`TurnstileClient::siteverify`], which returns it solely when
+/// Cloudflare verified the token. Parsing one from arbitrary JSON would yield a
+/// value that looks verified without any verification having taken place.
+///
+/// <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#api-response-format>
+#[derive(Debug, Clone)]
 pub struct SiteVerifyResponse {
-    /// Whether the request was successful.
-    pub success: bool,
-    /// The timestamp of the request.
-    #[serde(rename = "challenge_ts")]
+    /// The timestamp of the request, from the API's `challenge_ts` field.
     pub timestamp: String,
     /// The hostname of the request.
     pub hostname: String,
@@ -74,7 +76,6 @@ pub struct SiteVerifyResponse {
 impl From<RawSiteVerifyResponse> for SiteVerifyResponse {
     fn from(raw: RawSiteVerifyResponse) -> Self {
         Self {
-            success: raw.success,
             timestamp: raw.timestamp.unwrap_or_default(),
             hostname: raw.hostname.unwrap_or_default(),
             action: raw.action.unwrap_or_default(),
@@ -83,7 +84,7 @@ impl From<RawSiteVerifyResponse> for SiteVerifyResponse {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct RawSiteVerifyResponse {
     success: bool,
     #[serde(rename = "challenge_ts")]
@@ -135,11 +136,24 @@ impl TurnstileClient {
 
         let response = self.http.request(request).await?;
 
-        let body_bytes = response.collect().await?.to_bytes();
+        // Read the status before the body: `Response` itself implements `Body`, so
+        // collecting the response rather than its body silently discards the status.
+        let status = response.status();
+        if !status.is_success() {
+            return Err(TurnstileError::UnexpectedStatus(status));
+        }
+
+        let body_bytes = response.into_body().collect().await?.to_bytes();
         let body = serde_json::from_slice::<RawSiteVerifyResponse>(&body_bytes)?;
 
         if !body.error_codes.is_empty() {
             return Err(TurnstileError::SiteVerifyError(body.error_codes));
+        }
+
+        // Cloudflare always accompanies `success: false` with an error code, but do
+        // not rely on it: a caller using `?` must never be handed an unverified token.
+        if !body.success {
+            return Err(TurnstileError::VerificationFailed);
         }
 
         let transformed = SiteVerifyResponse::from(body);

@@ -20,6 +20,14 @@ pub enum TurnstileError {
     #[error("Turnstile API error: {0:?}")]
     SiteVerifyError(SiteVerifyErrors),
 
+    /// The Turnstile API responded with a non-success HTTP status.
+    #[error("Turnstile API returned HTTP status {0}")]
+    UnexpectedStatus(hyper::StatusCode),
+
+    /// The Turnstile API rejected the token but returned no error code.
+    #[error("Turnstile rejected the token without returning an error code")]
+    VerificationFailed,
+
     /// The error originated from Legacy Hyper.
     #[error("Legacy hyper error: {0:?}")]
     LegacyHyperError(#[from] hyper_util::client::legacy::Error),

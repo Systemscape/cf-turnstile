@@ -17,7 +17,8 @@ let validated = client.siteverify(SiteVerifyRequest {
   ..Default::default()
 }).await?;
 
-assert!(validated.success);
+// `siteverify` returns `Err` unless Cloudflare verified the token.
+println!("verified on {}", validated.hostname);
 ```
 
 ## Features
