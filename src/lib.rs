@@ -122,6 +122,41 @@ impl TurnstileClient {
     }
 
     /// Verify a Cloudflare Turnstile response.
+    ///
+    /// # Timeouts
+    ///
+    /// No timeout is applied, and hyper's client has none of its own, so a stalled
+    /// connection waits indefinitely. In a request handler that pins a task and a
+    /// connection until the process runs out of both. The latency budget belongs to
+    /// the caller, so bound it at the call site:
+    ///
+    /// ```no_run
+    /// # use cf_turnstile::{SiteVerifyRequest, SiteVerifyResponse, TurnstileClient};
+    /// # use cf_turnstile::error::TurnstileError;
+    /// # async fn verify(
+    /// #     client: &TurnstileClient,
+    /// #     request: SiteVerifyRequest,
+    /// # ) -> Option<Result<SiteVerifyResponse, TurnstileError>> {
+    /// use std::time::Duration;
+    ///
+    /// tokio::time::timeout(Duration::from_secs(5), client.siteverify(request))
+    ///     .await
+    ///     .ok()
+    /// # }
+    /// ```
+    ///
+    /// This bounds the whole operation: connect, TLS handshake, response and body read.
+    ///
+    /// # Cancellation
+    ///
+    /// Dropping the returned future is safe, but it does not un-send the request. If
+    /// that already reached Cloudflare the token is spent, since each token may only
+    /// be validated once, so retrying with the same token returns
+    /// [`SiteVerifyError::TimeoutOrDuplicate`]. To retry safely, enable the
+    /// `idempotency` feature and send the same `idempotency_key` on every attempt,
+    /// generated once before the first call.
+    ///
+    /// [`SiteVerifyError::TimeoutOrDuplicate`]: error::SiteVerifyError::TimeoutOrDuplicate
     pub async fn siteverify(
         &self,
         request: SiteVerifyRequest,
