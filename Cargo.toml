@@ -1,6 +1,6 @@
 [package]
 name = "cf-turnstile"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "A Rust client for Cloudflare Turnstile"
 homepage = "https://github.com/sycertech/cf-turnstile"

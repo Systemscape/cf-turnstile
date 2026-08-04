@@ -63,7 +63,7 @@ To enable `native-tls`, do something like this in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cf-turnstile = { default-features = false, features = ["native-tls", "hickory"], version = "0.2" }
+cf-turnstile = { default-features = false, features = ["native-tls", "hickory"], version = "0.3" }
 ```
 
 #### `rustls-native-roots`
