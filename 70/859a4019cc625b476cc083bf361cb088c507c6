@@ -1,0 +1,38 @@
+Makefile.toml
+  s_dd8de7d9d34900::t_beaea6e6170d9a 53,58
+.github/workflows/ci.yml
+  s_dd8de7d9d34900::t_d9b50cd10b62b7 52
+  s_fc484f842135a7::t_7805a5f65f9e31 23
+src/test.rs
+  s_dd8de7d9d34900::t_e9f70381f43e3e 103-111
+  s_dd8de7d9d34900::t_89523d1ecb33f6 116
+  s_dd8de7d9d34900::t_9aeece283310fa 91
+  s_dd8de7d9d34900::t_4b73997adacc19 2,4-9
+  s_dd8de7d9d34900::t_f092fc46f6144a 72
+Cargo.toml
+  s_dd8de7d9d34900::t_ea3750783bdf16 35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "70859a4019cc625b476cc083bf361cb088c507c6",
+  "prompts": {},
+  "sessions": {
+    "s_dd8de7d9d34900": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdfbf0d2-b65b-48d6-85f1-bad3953fba14",
+        "model": "claude-opus-5"
+      },
+      "human_author": "JuliDi <julian@systemscape.de>"
+    },
+    "s_fc484f842135a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fdf3d524-25a2-482a-a825-ffdba298ed73",
+        "model": "claude-opus-5"
+      },
+      "human_author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
