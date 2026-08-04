@@ -43,20 +43,22 @@ pub fn create() -> Connector {
     #[cfg(feature = "hickory")]
     let mut connector = hyper_hickory::TokioHickoryResolver::default().into_http_connector();
 
+    // Allow the `https` scheme through to the TLS connector that wraps this one.
+    // A TLS backend is guaranteed to be present: see the `compile_error!` in lib.rs.
     connector.enforce_http(false);
 
     #[cfg(feature = "rustls-native-roots")]
     let connector = hyper_rustls::HttpsConnectorBuilder::new()
         .with_native_roots()
         .expect("no native root certificates found")
-        .https_or_http()
+        .https_only()
         .enable_http1()
         .enable_http2()
         .wrap_connector(connector);
     #[cfg(all(feature = "rustls-webpki-roots", not(feature = "rustls-native-roots")))]
     let connector = hyper_rustls::HttpsConnectorBuilder::new()
         .with_webpki_roots()
-        .https_or_http()
+        .https_only()
         .enable_http1()
         .enable_http2()
         .wrap_connector(connector);
@@ -65,7 +67,11 @@ pub fn create() -> Connector {
         not(feature = "rustls-native-roots"),
         not(feature = "rustls-webpki-roots")
     ))]
-    let connector = hyper_tls::HttpsConnector::new_with_connector(connector);
+    let connector = {
+        let mut connector = hyper_tls::HttpsConnector::new_with_connector(connector);
+        connector.https_only(true);
+        connector
+    };
 
     connector
 }

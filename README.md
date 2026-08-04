@@ -30,8 +30,8 @@ This will enable the `idempotency_key` field on the [`SiteVerifyRequest`](struct
 
 ### TLS
 
-**Note**: not enabling any TLS feature is supported for use behind a proxy;
-Turnstile's API is HTTPS only.
+**Note**: Turnstile's API is HTTPS only, so exactly one TLS feature must be enabled.
+Building without a TLS backend is a compile error.
 
 **Note**: this TLS code was taken from [twilight-http](https://github.com/twilight-rs/twilight/tree/main/twilight-http) in accordance with its license.
 
