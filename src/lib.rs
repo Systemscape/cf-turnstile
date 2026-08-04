@@ -25,19 +25,32 @@ pub struct TurnstileClient {
 
 /// Represents a request to the Turnstile API.
 ///
+/// The `secret` parameter is not part of this struct: it is supplied by the
+/// [`TurnstileClient`] the request is sent with.
+///
 /// <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#accepted-parameters>
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct SiteVerifyRequest {
-    /// The secret key for the Turnstile API.
-    pub secret: Option<String>,
     /// The response token from the client.
     pub response: String,
-    /// The remote IP address of the client providing the respose.
-    #[serde(rename = "remote_ip")]
+    /// The remote IP address of the client providing the response.
+    #[serde(rename = "remoteip", skip_serializing_if = "Option::is_none")]
     pub remote_ip: Option<String>,
     /// The idempotency key for the request.
     #[cfg(feature = "idempotency")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency_key: Option<uuid::Uuid>,
+}
+
+/// The body sent to the Turnstile API: the client's secret, plus the caller's request.
+///
+/// Deliberately private and `Debug`-less so the secret cannot escape through a
+/// formatter. Borrows the secret rather than copying it out of the [`SecretString`].
+#[derive(Serialize)]
+struct SiteVerifyBody<'a> {
+    secret: &'a str,
+    #[serde(flatten)]
+    request: &'a SiteVerifyRequest,
 }
 
 /// Represents a succerssful response from the Turnstile API.
@@ -105,17 +118,12 @@ impl TurnstileClient {
         &self,
         request: SiteVerifyRequest,
     ) -> Result<SiteVerifyResponse, TurnstileError> {
-        // if request secret is none, set it:
-        let request = if request.secret.is_none() {
-            SiteVerifyRequest {
-                secret: Some(self.secret.expose_secret().to_string()),
-                ..request
-            }
-        } else {
-            request
+        let body = SiteVerifyBody {
+            secret: self.secret.expose_secret(),
+            request: &request,
         };
 
-        let body = Full::new(Bytes::from(serde_json::to_string(&request)?));
+        let body = Full::new(Bytes::from(serde_json::to_string(&body)?));
 
         let request = Request::builder()
             .method(Method::POST)

@@ -1,10 +1,47 @@
 //! https://developers.cloudflare.com/turnstile/reference/testing/
 use crate::{
     error::{SiteVerifyError, TurnstileError},
-    SiteVerifyRequest, TurnstileClient,
+    SiteVerifyBody, SiteVerifyRequest, TurnstileClient,
 };
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+
+/// The wire format must match Turnstile's accepted parameters, and optional
+/// parameters must be omitted rather than sent as `null`.
+#[test]
+fn test_request_serialization() {
+    let request = SiteVerifyRequest {
+        response: "myresponse".to_string(),
+        remote_ip: Some("1.2.3.4".to_string()),
+        ..Default::default()
+    };
+
+    let json: serde_json::Value = serde_json::to_value(SiteVerifyBody {
+        secret: "my-secret",
+        request: &request,
+    })
+    .unwrap();
+
+    assert_eq!(json["secret"], "my-secret");
+    assert_eq!(json["response"], "myresponse");
+    // Cloudflare's parameter is `remoteip`; `remote_ip` is silently ignored.
+    assert_eq!(json["remoteip"], "1.2.3.4");
+    assert!(json.get("remote_ip").is_none());
+
+    let minimal = SiteVerifyRequest {
+        response: "myresponse".to_string(),
+        ..Default::default()
+    };
+
+    assert_eq!(
+        serde_json::to_string(&SiteVerifyBody {
+            secret: "my-secret",
+            request: &minimal,
+        })
+        .unwrap(),
+        r#"{"secret":"my-secret","response":"myresponse"}"#
+    );
+}
 
 #[tokio::test]
 async fn test_success() -> Result<()> {
