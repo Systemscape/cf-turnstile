@@ -10,6 +10,7 @@ use hyper::{
 use hyper_util::{client::legacy::Client as HyperClient, rt::TokioExecutor};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
 
 mod connector;
 pub mod error;
@@ -130,7 +131,11 @@ impl TurnstileClient {
             request: &request,
         };
 
-        let body = Full::new(Bytes::from(serde_json::to_string(&body)?));
+        // The serialized body contains the secret key. Hand `Bytes` a zeroizing owner
+        // so the buffer is wiped when the request is done rather than merely freed,
+        // which would leave the key readable in a core dump or swapped-out page.
+        let body = Zeroizing::new(serde_json::to_vec(&body)?);
+        let body = Full::new(Bytes::from_owner(body));
 
         let request = Request::builder()
             .method(Method::POST)
