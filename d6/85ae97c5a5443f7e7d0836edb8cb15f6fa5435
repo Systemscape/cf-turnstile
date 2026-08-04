@@ -1,0 +1,23 @@
+Cargo.toml
+  s_dd8de7d9d34900::t_ed704159df0d1b 60-61
+src/lib.rs
+  s_dd8de7d9d34900::t_1a0299bb05198f 149-159
+  s_dd8de7d9d34900::t_ccaccea4fcaf1d 125-128,130-148
+  s_dd8de7d9d34900::t_c77d2eade9e284 129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d685ae97c5a5443f7e7d0836edb8cb15f6fa5435",
+  "prompts": {},
+  "sessions": {
+    "s_dd8de7d9d34900": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdfbf0d2-b65b-48d6-85f1-bad3953fba14",
+        "model": "claude-opus-5"
+      },
+      "human_author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
