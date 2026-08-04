@@ -1,9 +1,12 @@
 //! https://developers.cloudflare.com/turnstile/reference/testing/
-use crate::{
-    error::{SiteVerifyError, TurnstileError},
-    RawSiteVerifyResponse, SiteVerifyBody, SiteVerifyRequest, TurnstileClient,
-};
+use crate::{error::SiteVerifyError, RawSiteVerifyResponse, SiteVerifyBody, SiteVerifyRequest};
 
+#[cfg(feature = "network-tests")]
+use crate::error::TurnstileError;
+#[cfg(any(feature = "network-tests", feature = "integration"))]
+use crate::TurnstileClient;
+
+#[cfg(any(feature = "network-tests", feature = "integration"))]
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
 
 /// The wire format must match Turnstile's accepted parameters, and optional
@@ -66,6 +69,7 @@ fn test_unknown_error_code() {
     assert!(raw.error_codes.is_empty());
 }
 
+#[cfg(feature = "network-tests")]
 #[tokio::test]
 async fn test_success() -> Result<()> {
     let client = TurnstileClient::new("1x0000000000000000000000000000000AA".to_string().into());
@@ -84,6 +88,7 @@ async fn test_success() -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "network-tests")]
 #[tokio::test]
 async fn test_fail() -> Result<()> {
     let client = TurnstileClient::new("2x0000000000000000000000000000000AA".to_string().into());
@@ -95,11 +100,20 @@ async fn test_fail() -> Result<()> {
         })
         .await;
 
-    assert!(validated.is_err());
+    // Assert the API rejected the token, not merely that something went wrong:
+    // a DNS, TLS or parse failure must not satisfy this test.
+    match validated.unwrap_err() {
+        TurnstileError::SiteVerifyError(codes) => assert!(
+            matches!(codes.as_slice(), [SiteVerifyError::InvalidInputResponse]),
+            "unexpected error codes: {codes:?}"
+        ),
+        e => panic!("expected a Turnstile API rejection, got: {e}"),
+    }
 
     Ok(())
 }
 
+#[cfg(feature = "network-tests")]
 #[tokio::test]
 async fn test_token_already_spent() -> Result<()> {
     let client = TurnstileClient::new("3x0000000000000000000000000000000AA".to_string().into());

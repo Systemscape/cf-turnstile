@@ -50,12 +50,12 @@ args = ["fmt", "--all", "--", "--check"]
 [tasks.test]
 env = { "RUN_MODE" = "test", "RUST_LOG" = "info" }
 command = "cargo"
-args = ["nextest", "run", "${@}"]
+args = ["nextest", "run", "--features", "network-tests", "${@}"]
 
 [tasks.test-ci]
 env = { "RUN_MODE" = "ci", "RUST_LOG" = "info" }
 command = "cargo"
-args = ["nextest", "run"]
+args = ["nextest", "run", "--features", "network-tests"]
 
 [tasks.cov]
 command = "cargo"

@@ -32,6 +32,9 @@ rustls-native-roots = ["dep:hyper-rustls", "hyper-rustls?/native-tokio"]
 rustls-webpki-roots = ["dep:hyper-rustls", "hyper-rustls?/webpki-tokio"]
 hickory = ["dep:hyper-hickory", "hyper-hickory?/tokio"]
 integration = ["idempotency"]
+# Tests that call the live Turnstile API with Cloudflare's dummy keys. Off by
+# default so `cargo test` works offline; `cargo make test` enables it.
+network-tests = []
 
 [dev-dependencies]
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "test-util", "macros"] }
