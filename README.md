@@ -7,18 +7,25 @@ A Rust client for [Cloudflare Turnstile].
 
 
 # Example
-```rust,ignore
+```rust,no_run
 use cf_turnstile::{SiteVerifyRequest, TurnstileClient};
 
-let client = TurnstileClient::new("my-secret".to_string().into());
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = TurnstileClient::new("my-secret".to_string().into());
 
-let validated = client.siteverify(SiteVerifyRequest {
-   response: "myresponse".to_string(),
-  ..Default::default()
-}).await?;
+    let validated = client
+        .siteverify(SiteVerifyRequest {
+            response: "myresponse".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
-// `siteverify` returns `Err` unless Cloudflare verified the token.
-println!("verified on {}", validated.hostname);
+    // `siteverify` returns `Err` unless Cloudflare verified the token.
+    println!("verified on {}", validated.hostname);
+
+    Ok(())
+}
 ```
 
 ## Features
@@ -48,15 +55,15 @@ enabled the backend is chosen by precedence:
 2. `rustls-webpki-roots`
 3. `native-tls`
 
-#### `native`
+#### `native-tls`
 
-The `native` feature uses a HTTPS connector provided by [`hyper-tls`].
+The `native-tls` feature uses a HTTPS connector provided by [`hyper-tls`].
 
-To enable `native`, do something like this in your `Cargo.toml`:
+To enable `native-tls`, do something like this in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cf-turnstile = { default-features = false, features = ["native"], version = "0.1" }
+cf-turnstile = { default-features = false, features = ["native-tls", "hickory"], version = "0.2" }
 ```
 
 #### `rustls-native-roots`
@@ -75,11 +82,14 @@ for root certificates.
 
 This should be preferred over `rustls-native-roots` in Docker containers based on `scratch`.
 
-### Trust-DNS
+### Hickory DNS
 
-The `trust-dns` enables [`hyper-trust-dns`], which replaces the default
-`GaiResolver` in [`hyper`]. [`hyper-trust-dns`] instead provides a fully
+The `hickory` feature enables [`hyper-hickory`], which replaces the default
+`GaiResolver` in [`hyper`]. [`hyper-hickory`] instead provides a fully
 async DNS resolver on the application level.
+
+This is enabled by default. Note that `default-features = false` turns it off, so
+add it back explicitly if you want it alongside a non-default TLS backend.
 
 [Cloudflare Turnstile]: https://developers.cloudflare.com/turnstile/
 [`hyper`]: https://crates.io/crates/hyper
@@ -87,5 +97,5 @@ async DNS resolver on the application level.
 [`hyper-tls`]: https://crates.io/crates/hyper-tls
 [`rustls`]: https://crates.io/crates/rustls
 [`rustls-native-certs`]: https://crates.io/crates/rustls-native-certs
-[`hyper-trust-dns`]: https://crates.io/crates/hyper-trust-dns
+[`hyper-hickory`]: https://crates.io/crates/hyper-hickory
 [`webpki-roots`]: https://crates.io/crates/webpki-roots
