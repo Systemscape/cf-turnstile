@@ -142,7 +142,7 @@ impl TurnstileClient {
 
 /// Generate a new idempotency key.
 #[cfg(feature = "idempotency")]
-pub fn generate_indepotency_key() -> Option<uuid::Uuid> {
+pub fn generate_idempotency_key() -> Option<uuid::Uuid> {
     Some(uuid::Uuid::new_v4())
 }
 
