@@ -12,18 +12,32 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bytes = { default-features = false, version = "1.12.1" }
-http-body-util = { default-features = false, version = "0.1" }
+bytes = { version = "1.12.1", default-features = false }
+http-body-util = { version = "0.1.4", default-features = false }
 hyper = { version = "1.11.0", default-features = false }
-hyper-util = { default-features = false, features = ["client-legacy", "http1", "http2", "tokio"], version = "0.1.20" }
-hyper-rustls = { default-features = false, optional = true, features = ["http1", "http2", "ring"], version = "0.27.9" }
-hyper-tls = { default-features = false, optional = true, features = ["alpn"], version = "0.6" }
-hyper-hickory = { default-features = false, optional = true, version = "0.8.0" }
+hyper-util = { version = "0.1.20", default-features = false, features = [
+  "client-legacy",
+  "http1",
+  "http2",
+  "tokio",
+] }
+hyper-rustls = { version = "0.27.9", optional = true, default-features = false, features = [
+  "http1",
+  "http2",
+  "ring",
+] }
+hyper-tls = { version = "0.6.0", optional = true, default-features = false, features = [
+  "alpn",
+] }
+hyper-hickory = { version = "0.8.0", optional = true, default-features = false }
 secrecy = "0.10.3"
-serde = { default-features = false, features = ["derive", "std"], version = "1" }
-serde_json = { default-features = false, features = ["std"], version = "1" }
-thiserror = "2"
-uuid = { version = "1", features = ["v4", "serde"], optional = true }
+serde = { version = "1.0.229", default-features = false, features = [
+  "derive",
+  "std",
+] }
+serde_json = { version = "1.0.151", features = ["std"] }
+thiserror = "2.0.19"
+uuid = { version = "1.24.0", optional = true, features = ["v4", "serde"] }
 zeroize = "1.9.0"
 
 [features]
@@ -39,7 +53,11 @@ integration = ["idempotency"]
 network-tests = []
 
 [dev-dependencies]
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "test-util", "macros"] }
+tokio = { version = "1", default-features = false, features = [
+  "rt-multi-thread",
+  "test-util",
+  "macros",
+] }
 
 [lints.rust]
 unsafe_code = "forbid"

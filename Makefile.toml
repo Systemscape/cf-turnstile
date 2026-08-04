@@ -11,26 +11,20 @@ script = '''
 [tasks.lint]
 install_crate = "clippy"
 command = "cargo"
-args = [
-    "clippy",
-    "--tests",
-    "--examples",
-    "--all-targets",
-    "--all-features",
-]
+args = ["clippy", "--tests", "--examples", "--all-targets", "--all-features"]
 
 [tasks.lint-ci]
 install_crate = "clippy"
 command = "cargo"
 args = [
-    "clippy",
-    "--tests",
-    "--examples",
-    "--all-targets",
-    "--all-features",
-    "--",
-    "-D",
-    "warnings",
+  "clippy",
+  "--tests",
+  "--examples",
+  "--all-targets",
+  "--all-features",
+  "--",
+  "-D",
+  "warnings",
 ]
 
 [tasks.format]
@@ -60,36 +54,20 @@ args = ["nextest", "run", "--features", "network-tests"]
 [tasks.cov]
 command = "cargo"
 env = { "RUN_MODE" = "test" }
-args = [
-    "llvm-cov", "nextest",
-    "${@}"
-]
+args = ["llvm-cov", "nextest", "${@}"]
 
 [tasks.cov-ci]
 command = "cargo"
 env = { "RUN_MODE" = "ci" }
-args = [
-    "llvm-cov", "nextest",
-    "--lcov", "--output-path", "lcov.info"
-]
+args = ["llvm-cov", "nextest", "--lcov", "--output-path", "lcov.info"]
 
 [tasks.docs]
 command = "cargo"
-args = [
-    "doc",
-    "--no-deps",
-    "--all-features",
-    "--document-private-items",
-]
+args = ["doc", "--no-deps", "--all-features", "--document-private-items"]
 
 [tasks.docs-watch]
 command = "cargo"
-args = [
-    "doc",
-    "--no-deps",
-    "--all-features",
-    "--document-private-items",
-]
+args = ["doc", "--no-deps", "--all-features", "--document-private-items"]
 watch = true
 
 [tasks.timings]
