@@ -190,31 +190,17 @@ pub fn generate_idempotency_key() -> Option<uuid::Uuid> {
 
 // Turnstile's API is HTTPS only. Without a TLS backend the client would send the
 // secret key over an unencrypted connection, so refuse to build instead.
+//
+// Enabling *several* backends is not an error: Cargo features are additive, and two
+// unrelated crates in one dependency graph may each ask for a different backend. That
+// is unresolvable if the combination fails to compile, so `connector::create` picks by
+// precedence instead — see its module docs.
 #[cfg(not(any(
     feature = "native-tls",
     feature = "rustls-native-roots",
     feature = "rustls-webpki-roots"
 )))]
 compile_error!(
-    r#"A TLS backend is required: enable exactly one of "rustls-native-roots" (the default), "rustls-webpki-roots" or "native-tls".
+    r#"A TLS backend is required: enable at least one of "rustls-native-roots" (the default), "rustls-webpki-roots" or "native-tls".
 Turnstile's API is HTTPS only, and without TLS the secret key would be sent in cleartext."#
-);
-
-// Some features are mutually exclusive. This is documented in the readme, but also gives a compile-time error
-#[cfg(all(feature = "native-tls", feature = "rustls-native-roots"))]
-compile_error!(
-    r#"The features "native-tls" and "rustls-native-roots" are mutually exclusive. Please enable only one TLS backend.
-If you're enabling "native-tls", make sure to set `default-features = false` to disable the default "rustls-native-roots" feature."#
-);
-
-#[cfg(all(feature = "native-tls", feature = "rustls-webpki-roots"))]
-compile_error!(
-    r#"The features "native-tls" and "rustls-webpki-roots" are mutually exclusive. Please enable only one TLS backend.
-If you're enabling "native-tls", make sure to set `default-features = false` to disable the default "rustls-native-roots" feature."#
-);
-
-#[cfg(all(feature = "rustls-native-roots", feature = "rustls-webpki-roots"))]
-compile_error!(
-    r#"The features "rustls-native-roots" and "rustls-webpki-roots" are mutually exclusive. Please enable only one TLS backend.
-If you're enabling "native-tls", make sure to set `default-features = false` to disable the default "rustls-native-roots" feature."#
 );

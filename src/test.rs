@@ -16,7 +16,8 @@ fn test_request_serialization() {
     let request = SiteVerifyRequest {
         response: "myresponse".to_string(),
         remote_ip: Some("1.2.3.4".to_string()),
-        ..Default::default()
+        #[cfg(feature = "idempotency")]
+        idempotency_key: None,
     };
 
     let json: serde_json::Value = serde_json::to_value(SiteVerifyBody {

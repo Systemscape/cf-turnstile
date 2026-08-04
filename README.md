@@ -31,13 +31,22 @@ This will enable the `idempotency_key` field on the [`SiteVerifyRequest`](struct
 
 ### TLS
 
-**Note**: Turnstile's API is HTTPS only, so exactly one TLS feature must be enabled.
+**Note**: Turnstile's API is HTTPS only, so at least one TLS feature must be enabled.
 Building without a TLS backend is a compile error.
 
 **Note**: this TLS code was taken from [twilight-http](https://github.com/twilight-rs/twilight/tree/main/twilight-http) in accordance with its license.
 
-`cf-turnstile` has features to enable HTTPS connectivity with [`hyper`]. These
-features are mutually exclusive. `rustls-native-roots` is enabled by default.
+`cf-turnstile` has features to enable HTTPS connectivity with [`hyper`].
+`rustls-native-roots` is enabled by default.
+
+Enabling more than one backend is allowed rather than a build failure: Cargo features
+are additive, so two unrelated crates in the same dependency graph may each select a
+different backend, and that combination has to keep compiling. When several are
+enabled the backend is chosen by precedence:
+
+1. `rustls-native-roots`
+2. `rustls-webpki-roots`
+3. `native-tls`
 
 #### `native`
 

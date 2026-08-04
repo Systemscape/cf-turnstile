@@ -1,5 +1,13 @@
 //! HTTP connectors with different features.
 //!
+//! More than one TLS backend may be enabled at once, because Cargo features are
+//! additive and unrelated crates in the same dependency graph may each select a
+//! different one. Rather than failing to build, the backend is chosen by precedence:
+//!
+//! 1. `rustls-native-roots`
+//! 2. `rustls-webpki-roots`
+//! 3. `native-tls`
+//!
 //! Taken from [twilight-http](https://github.com/twilight-rs/twilight/blob/main/twilight-http/src/client/connector.rs)
 //!
 //! ISC License (ISC) - Copyright (c) 2019 (c) The Twilight Contributors
