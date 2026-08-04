@@ -1,7 +1,7 @@
 //! https://developers.cloudflare.com/turnstile/reference/testing/
 use crate::{
     error::{SiteVerifyError, TurnstileError},
-    SiteVerifyBody, SiteVerifyRequest, TurnstileClient,
+    RawSiteVerifyResponse, SiteVerifyBody, SiteVerifyRequest, TurnstileClient,
 };
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
@@ -41,6 +41,29 @@ fn test_request_serialization() {
         .unwrap(),
         r#"{"secret":"my-secret","response":"myresponse"}"#
     );
+}
+
+/// A code Cloudflare adds later must not cost us the rest of the response, and a
+/// missing `error-codes` key must mean "no errors" rather than a parse failure.
+#[test]
+fn test_unknown_error_code() {
+    let raw: RawSiteVerifyResponse = serde_json::from_str(
+        r#"{"success":false,"error-codes":["invalid-input-response","brand-new-code"]}"#,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        raw.error_codes.as_slice(),
+        [
+            SiteVerifyError::InvalidInputResponse,
+            SiteVerifyError::Unknown
+        ]
+    ));
+
+    let raw: RawSiteVerifyResponse =
+        serde_json::from_str(r#"{"success":true,"hostname":"example.com"}"#).unwrap();
+
+    assert!(raw.error_codes.is_empty());
 }
 
 #[tokio::test]

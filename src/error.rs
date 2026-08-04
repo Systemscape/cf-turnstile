@@ -1,17 +1,6 @@
 //! Error types for the Turnstile API.
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-// ​​Error codes
-// Error code	Description
-// missing-input-secret	The secret parameter was not passed.
-// invalid-input-secret	The secret parameter was invalid or did not exist.
-// missing-input-response	The response parameter was not passed.
-// invalid-input-response	The response parameter is invalid or has expired.
-// invalid-widget-id	The widget ID extracted from the parsed site secret key was invalid or did not exist.
-// invalid-parsed-secret	The secret extracted from the parsed site secret key was invalid.
-// bad-request	The request was rejected because it was malformed.
-// timeout-or-duplicate	The response parameter has already been validated before.
-// internal-error	An internal error happened while validating the response. The request can be retried.
 
 /// Represents a list of errors from the Turnstile API.
 #[derive(Debug, Error)]
@@ -53,7 +42,7 @@ pub type SiteVerifyErrors = Vec<SiteVerifyError>;
 
 /// Represents an error from the Turnstile API.
 ///
-/// <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#error-codes>
+/// <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#error-codes-reference>
 #[derive(Debug, Clone, Error, Deserialize, Serialize)]
 pub enum SiteVerifyError {
     /// The secret parameter was not passed.
@@ -76,18 +65,6 @@ pub enum SiteVerifyError {
     #[error("The response parameter is invalid or has expired.")]
     InvalidInputResponse,
 
-    /// The widget ID extracted from the parsed site secret key was invalid or did not exist.
-    #[serde(rename = "invalid-widget-id")]
-    #[error(
-        "The widget ID extracted from the parsed site secret key was invalid or did not exist."
-    )]
-    InvalidWidgetId,
-
-    /// The secret extracted from the parsed site secret key was invalid.
-    #[serde(rename = "invalid-parsed-secret")]
-    #[error("The secret extracted from the parsed site secret key was invalid.")]
-    InvalidParsedSecret,
-
     /// The request was rejected because it was malformed.
     #[serde(rename = "bad-request")]
     #[error("The request was rejected because it was malformed.")]
@@ -104,4 +81,12 @@ pub enum SiteVerifyError {
         "An internal error happened while validating the response. The request can be retried."
     )]
     InternalError,
+
+    /// An error code not known to this version of the crate.
+    ///
+    /// Without this catch-all a single unrecognised code would fail the whole
+    /// response, costing the caller every other code in the array.
+    #[serde(other)]
+    #[error("The Turnstile API returned an error code unknown to this version of the crate.")]
+    Unknown,
 }

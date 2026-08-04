@@ -90,7 +90,8 @@ struct RawSiteVerifyResponse {
     #[serde(rename = "challenge_ts")]
     timestamp: Option<String>,
     hostname: Option<String>,
-    #[serde(rename = "error-codes")]
+    /// Absent rather than empty on some responses, so treat a missing key as "no errors".
+    #[serde(rename = "error-codes", default)]
     error_codes: SiteVerifyErrors,
     action: Option<String>,
     cdata: Option<String>,
