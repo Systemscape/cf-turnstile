@@ -1,0 +1,19 @@
+Cargo.toml
+  s_dd8de7d9d34900::t_ad95a4362366ef 38-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9f415006176dd3cb24ba1bd1ec03b345f1f5e2c7",
+  "prompts": {},
+  "sessions": {
+    "s_dd8de7d9d34900": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdfbf0d2-b65b-48d6-85f1-bad3953fba14",
+        "model": "claude-opus-5"
+      },
+      "human_author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
