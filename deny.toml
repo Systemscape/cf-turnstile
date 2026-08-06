@@ -1,0 +1,30 @@
+# Policy for `cargo deny`, run by `just audit` and .github/workflows/audit.yml.
+# https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+# Each TLS backend pulls in a different subtree.
+all-features = true
+
+[advisories]
+# Accepted advisories go here, each with a note saying why.
+ignore = []
+
+[licenses]
+allow = [
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-3-Clause",
+  "CDLA-Permissive-2.0", # webpki-roots
+  "ISC",
+  "MIT",
+  "Unicode-3.0",
+]
+
+[bans]
+# Usually a transitive dependency's choice, so warn rather than fail.
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

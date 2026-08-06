@@ -7,46 +7,65 @@ on:
   pull_request:
     paths-ignore: ["**.md"]
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
 
 concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
 
 jobs:
-  check:
-    name: Check Suite
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-      - name: Register Problem Matchers
-        uses: r7kamura/rust-problem-matchers@v1
+      # Installs the toolchain, sets up Swatinem/rust-cache and the problem
+      # matchers, and sets RUSTFLAGS to `-D warnings`.
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - run: rustup toolchain install stable --profile minimal
+      - uses: taiki-e/install-action@nextest
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
+      # `network-tests` calls the live Turnstile API with Cloudflare's dummy keys.
+      - run: cargo nextest run --features network-tests,idempotency
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      # nextest does not run doctests.
+      - run: cargo test --doc --all-features
 
-      - name: Install Cargo Make
-        uses: davidB/rust-cargo-make@v1
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
 
-      - name: Install nextest
-        uses: taiki-e/install-action@nextest
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy, rustfmt
 
-      - name: Run Formatter
-        run: cargo make format-ci
+      - run: cargo fmt --all --check
 
-      - name: Run Clippy
-        run: cargo make lint-ci
+      - run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Build
-        run: cargo build --release --all-features
+      - run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
 
-      - name: Run Unit Tests
-        run: cargo make test-ci
+  features:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - uses: taiki-e/install-action@cargo-hack
+
+      # `--at-least-one-of` skips the TLS-less combinations that `compile_error!`.
+      # The excluded features only gate `#[cfg(test)]` code, which `check` skips.
+      - run: |
+          cargo hack check --feature-powerset \
+            --exclude-features integration,network-tests \
+            --at-least-one-of rustls-native-roots,rustls-webpki-roots,native-tls
