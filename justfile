@@ -12,7 +12,7 @@ default:
     @just --list
 
 # Run everything CI runs.
-verify: fmt-check lint test doc features
+verify: fmt-check lint test doc features audit
 
 # Build with all features enabled.
 build *args:
