@@ -119,7 +119,7 @@ async fn test_success() -> Result<()> {
                 response: "myresponse".to_string(),
                 ..Default::default()
             },
-            Some(&["example.com"]),
+            None::<&str>,
         )
         .await?;
 
@@ -141,7 +141,7 @@ async fn test_success_with_hostname() -> Result<()> {
                 response: "myresponse".to_string(),
                 ..Default::default()
             },
-            Some(&["example.com"]),
+            ["example.com"],
         )
         .await?;
 
@@ -163,7 +163,7 @@ async fn test_reject_invalid_hostname() -> Result<()> {
                 response: "myresponse".to_string(),
                 ..Default::default()
             },
-            Some(&["evil.com"]),
+            ["evil.com"],
         )
         .await;
 
@@ -188,7 +188,7 @@ async fn test_fail() -> Result<()> {
                 response: "myresponse".to_string(),
                 ..Default::default()
             },
-            Some(&["example.com"]),
+            ["example.com"],
         )
         .await;
 
@@ -218,7 +218,7 @@ async fn test_error_codes_survive_http_400() -> Result<()> {
                 response: "myresponse".to_string(),
                 ..Default::default()
             },
-            None,
+            None::<&str>,
         )
         .await;
 
@@ -244,7 +244,7 @@ async fn test_token_already_spent() -> Result<()> {
                 response: "myresponse".to_string(),
                 ..Default::default()
             },
-            Some(&["example.com"]),
+            ["example.com"],
         )
         .await;
 
@@ -281,7 +281,7 @@ async fn test_integration() -> Result<()> {
                 idempotency_key,
                 ..Default::default()
             },
-            Some(&["example.com"]),
+            ["example.com"],
         )
         .await?;
 

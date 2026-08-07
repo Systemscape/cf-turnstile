@@ -127,7 +127,7 @@ impl TurnstileClient {
     /// `valid_hostnames` is an optional list of hostnames to verify against. The function
     /// will error if the hostname returned by the Turnstile API does not match any of the
     /// provided hostnames.
-    /// When it is None, the hostname is not verified.
+    /// To skip hostname verification, set it to `None::<&str>`.
     ///
     /// # Timeouts
     ///
@@ -147,7 +147,7 @@ impl TurnstileClient {
     ///
     /// tokio::time::timeout(
     ///     Duration::from_secs(5),
-    ///     client.siteverify(request, Some(&["example.com"]))
+    ///     client.siteverify(request, ["example.com"])
     /// ).await.ok()
     /// # }
     /// ```
@@ -180,7 +180,7 @@ impl TurnstileClient {
     /// match client
     ///     .siteverify(
     ///         SiteVerifyRequest { response: token, ..Default::default() },
-    ///         Some(&["example.com"]),
+    ///         ["example.com"],
     ///     )
     ///     .await
     /// {
@@ -201,7 +201,7 @@ impl TurnstileClient {
     pub async fn siteverify(
         &self,
         request: SiteVerifyRequest,
-        valid_hostnames: Option<&[&str]>,
+        valid_hostnames: impl IntoIterator<Item: AsRef<str>>,
     ) -> Result<SiteVerifyResponse, TurnstileError> {
         let body = SiteVerifyBody {
             secret: self.secret.expose_secret(),
@@ -271,9 +271,12 @@ impl TurnstileClient {
             return Err(TokenRejection::Unverified.into());
         }
 
-        if let Some(valid_hostnames) = valid_hostnames
+        // If peeking does not work, it means `None` was passed.
+        let mut valid_hostnames = valid_hostnames.into_iter().peekable();
+        // Reject if none of the valid_hostnames matches the body's hostname field
+        if valid_hostnames.peek().is_some()
             && let Some(ref body_hostname) = body.hostname
-            && !valid_hostnames.contains(&body_hostname.as_str())
+            && !valid_hostnames.any(|h| h.as_ref() == body_hostname.as_str())
         {
             return Err(TokenRejection::HostnameMismatch(body_hostname.clone()).into());
         }

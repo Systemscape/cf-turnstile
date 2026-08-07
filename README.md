@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 response: "my-widget-response".to_string(),
                 ..Default::default()
             },
-            Some(&["example.com"]),
+            ["example.com"],
         )
         .await?;
 
