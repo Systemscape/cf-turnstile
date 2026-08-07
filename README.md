@@ -63,7 +63,7 @@ To enable `native-tls`, do something like this in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cf-turnstile = { default-features = false, features = ["native-tls"], version = "0.3" }
+cf-turnstile = { default-features = false, features = ["native-tls"], version = "0.4" }
 ```
 
 #### `rustls-native-roots`
@@ -81,6 +81,15 @@ The `rustls-webpki-roots` feature uses a HTTPS connector provided by [`hyper-rus
 for root certificates.
 
 This should be preferred over `rustls-native-roots` in Docker containers based on `scratch`.
+
+## Releasing
+
+1. Bump `version` in `Cargo.toml` in a pull request, and merge it.
+2. Run `just release` on an up to date `main`.
+
+That tags the commit with `v<version>` and pushes the tag, which makes the `Release`
+workflow publish a GitHub release with generated notes. A version containing a hyphen,
+such as `0.4.0-rc.1`, is marked as a prerelease.
 
 [Cloudflare Turnstile]: https://developers.cloudflare.com/turnstile/
 [`hyper`]: https://crates.io/crates/hyper

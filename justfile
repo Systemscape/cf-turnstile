@@ -57,8 +57,19 @@ features:
 doc *args:
     RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features {{ args }}
 
+# Check dependencies for advisories, disallowed licenses and banned crates.
 audit:
     cargo deny check
+
+# Tag HEAD with the version in Cargo.toml and push it, which publishes a release.
+release:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git fetch --quiet origin main
+    [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "HEAD is not origin/main"; exit 1; }
+    version=$(git show HEAD:Cargo.toml | sed -n 's/^version = "\(.*\)"/\1/p')
+    git tag -a "v$version" -m "v$version"
+    git push origin "v$version"
 
 # Install the components and tools the other recipes need.
 setup:
