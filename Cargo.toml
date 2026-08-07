@@ -67,3 +67,5 @@ missing_docs = "warn"
 
 [lints.clippy]
 all = "deny"
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }

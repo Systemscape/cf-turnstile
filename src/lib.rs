@@ -118,7 +118,7 @@ impl TurnstileClient {
         let http =
             hyper_util::client::legacy::Client::builder(TokioExecutor::new()).build(connector);
 
-        Self { http, secret }
+        Self { secret, http }
     }
 
     /// Verify a Cloudflare Turnstile response.
@@ -168,7 +168,7 @@ impl TurnstileClient {
 
         // The serialized body contains the secret key. Hand `Bytes` a zeroizing owner
         // so the buffer is wiped when the request is done rather than merely freed,
-        // which would leave the key readable in a core dump or swapped-out page.
+        // which is best practice, but only works on a best-effort level, not a 100% guarantee.
         let body = Zeroizing::new(serde_json::to_vec(&body)?);
         let body = Full::new(Bytes::from_owner(body));
 
