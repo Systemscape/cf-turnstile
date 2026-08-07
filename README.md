@@ -15,10 +15,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = TurnstileClient::new("my-secret".to_string().into());
 
     let validated = client
-        .siteverify(SiteVerifyRequest {
-            response: "myresponse".to_string(),
-            ..Default::default()
-        })
+        .siteverify(
+            SiteVerifyRequest {
+                response: "my-widget-response".to_string(),
+                ..Default::default()
+            },
+            Some(&["example.com"]),
+        )
         .await?;
 
     // `siteverify` returns `Err` unless Cloudflare verified the token.
