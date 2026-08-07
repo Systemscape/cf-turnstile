@@ -113,6 +113,7 @@ const TURNSTILE_USER_AGENT: &str = concat!(
 
 impl TurnstileClient {
     /// Create a new Turnstile client.
+    #[must_use]
     pub fn new(secret: SecretString) -> Self {
         let connector = connector::create();
         let http =
@@ -157,6 +158,12 @@ impl TurnstileClient {
     /// generated once before the first call.
     ///
     /// [`SiteVerifyError::TimeoutOrDuplicate`]: error::SiteVerifyError::TimeoutOrDuplicate
+    ///
+    /// # Errors
+    /// Returns a [`TurnstileError`] containing details about which step of the verification failed.
+    ///
+    /// # Panics
+    /// When the http Request Builder returns an error, which should never happen and is covered by tests.
     pub async fn siteverify(
         &self,
         request: SiteVerifyRequest,
@@ -197,10 +204,10 @@ impl TurnstileClient {
             // `Limited` boxes the inner body's error, so anything that is not a
             // transport failure is the length limit being hit.
             Err(err) => {
-                return Err(match err.downcast::<hyper::Error>() {
-                    Ok(err) => TurnstileError::HyperError(*err),
-                    Err(_) => TurnstileError::ResponseTooLarge,
-                })
+                return Err(err.downcast::<hyper::Error>().map_or_else(
+                    |_| TurnstileError::ResponseTooLarge,
+                    |err| TurnstileError::HyperError(*err),
+                ))
             }
         };
 

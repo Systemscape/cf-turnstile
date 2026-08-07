@@ -1,5 +1,5 @@
 > [!NOTE]
-> This is an actively maintained fork of https://github.com/Fyko/cf-turnstile
+> This is an actively maintained fork of <https://github.com/Fyko/cf-turnstile>
 
 # cf-turnstile
 
