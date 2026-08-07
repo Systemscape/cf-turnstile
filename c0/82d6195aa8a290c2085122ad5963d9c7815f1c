@@ -1,0 +1,38 @@
+.github/workflows/ci.yml
+  s_ea74df4e9edb3c::t_1bbeb691fc0669 26-32,35,37-38,43,45,49,51,53,60,62,64,66-68
+  s_ea74df4e9edb3c::t_c29aaec8b40e60 10-12,15-16,23,33-34,40-42,46-47,54-55,57-59,69-71
+README.md
+  s_ea74df4e9edb3c::t_6dd43732e8d2e6 2
+  s_ea74df4e9edb3c::t_2cae0da4566ee5 66
+deny.toml
+  s_ea74df4e9edb3c::t_77e290fba03b7d 1-2,5,9,17,24
+  s_ea74df4e9edb3c::t_4183d92ff01bec 3-4,6-8,10-16,18-23,25-30
+.gitignore
+  s_ea74df4e9edb3c::t_2d803b3fb27195 4
+.github/workflows/audit.yml
+  s_ea74df4e9edb3c::t_41911f47b7a74b 24-28
+  s_ea74df4e9edb3c::t_c7c19238e588b0 1-23
+justfile
+  s_ea74df4e9edb3c::t_df9fb9e4ddc12a 61
+  s_ea74df4e9edb3c::t_d2f6e5cc172ee1 5-6,8-13,16,18-32,34-36,38-41,43-45,47-55,57-59,60,62,64-66
+  s_ea74df4e9edb3c::t_efaacbf84daa7a 1-4,7,14,17,33,37,42,46,56,63
+Cargo.toml
+  s_ea74df4e9edb3c::t_12cace9f915901 50
+  s_ea74df4e9edb3c::t_64ee495a9e1758 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c082d6195aa8a290c2085122ad5963d9c7815f1c",
+  "prompts": {},
+  "sessions": {
+    "s_ea74df4e9edb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48619aa5-8cc6-4a83-b1b4-429e3c814817",
+        "model": "claude-opus-5"
+      },
+      "human_author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
