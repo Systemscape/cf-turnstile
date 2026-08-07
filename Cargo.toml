@@ -1,10 +1,10 @@
 [package]
 name = "cf-turnstile"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "A Rust client for Cloudflare Turnstile"
-homepage = "https://github.com/sycertech/cf-turnstile"
-repository = "https://github.com/sycertech/cf-turnstile"
+homepage = "https://github.com/Systemscape/cf-turnstile"
+repository = "https://github.com/Systemscape/cf-turnstile"
 categories = ["api-bindings", "asynchronous", "web-programming::http-client"]
 keywords = ["cloudflare", "turnstile", "recaptcha", "captcha"]
 license = "MIT"
