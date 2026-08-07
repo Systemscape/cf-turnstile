@@ -1,0 +1,45 @@
+src/test.rs
+  s_dd8de7d9d34900::t_b0dc6bd237f245 209,226
+  s_dd8de7d9d34900::t_c1ebb413c5921a 208,210-225,227-235
+  s_dd8de7d9d34900::t_8c95cb6e629cd7 253
+  s_dd8de7d9d34900::t_f6b5a6dd0b6aa7 74-79,81-110
+  s_dd8de7d9d34900::t_08ae34dcdf447c 198
+  s_dd8de7d9d34900::t_509a2bc1f60714 2-5
+  s_dd8de7d9d34900::t_e872ab126fe798 170-175
+  s_dd8de7d9d34900::t_76f82a0dbd7576 80
+src/lib.rs
+  s_dd8de7d9d34900::t_721f72aff8de78 172-174,176-186,189-197
+  s_dd8de7d9d34900::t_f6966996d8865b 227-232
+  s_dd8de7d9d34900::t_5be1006b14d295 187-188
+  s_dd8de7d9d34900::t_fd6c86909b8f54 278
+  s_dd8de7d9d34900::t_717a7fa38f19c5 3
+  s_dd8de7d9d34900::t_df287ba1cd791c 271
+  s_dd8de7d9d34900::t_5249a9deed33fc 169,175
+  s_dd8de7d9d34900::t_8e9f6743a1eb2e 250-255,259-265
+  s_dd8de7d9d34900::t_853296b584a2da 170-171
+  s_dd8de7d9d34900::t_e09d48c448c4c7 258
+src/error.rs
+  s_dd8de7d9d34900::t_20e8e903eb2db1 5-10,13-15,17-20,22,24-25
+  s_dd8de7d9d34900::t_54d21b0d9a3fd4 59-63,65-102
+  s_dd8de7d9d34900::t_faf4437891d112 27-34
+  s_dd8de7d9d34900::t_18b0af3764df43 23
+  s_dd8de7d9d34900::t_c599fc1c9aabe9 35-36
+  s_dd8de7d9d34900::t_8c0ceba390b18f 58
+  s_dd8de7d9d34900::t_935e8047aff91b 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c03ce67c6fbf1663d32a24f344c88857373461cf",
+  "prompts": {},
+  "sessions": {
+    "s_dd8de7d9d34900": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdfbf0d2-b65b-48d6-85f1-bad3953fba14",
+        "model": "claude-fable-5"
+      },
+      "human_author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
