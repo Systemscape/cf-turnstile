@@ -235,6 +235,7 @@ impl TurnstileClient {
 /// retry. Generating a fresh key per attempt makes each one a separate validation,
 /// which fails once the token is spent.
 #[cfg(feature = "idempotency")]
+#[must_use]
 pub fn generate_idempotency_key() -> Option<uuid::Uuid> {
     Some(uuid::Uuid::new_v4())
 }

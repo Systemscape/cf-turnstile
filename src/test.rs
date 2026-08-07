@@ -1,4 +1,4 @@
-//! https://developers.cloudflare.com/turnstile/reference/testing/
+//! <https://developers.cloudflare.com/turnstile/reference/testing/>
 use crate::{error::SiteVerifyError, RawSiteVerifyResponse, SiteVerifyBody, SiteVerifyRequest};
 
 #[cfg(feature = "network-tests")]
@@ -132,7 +132,7 @@ async fn test_token_already_spent() -> Result<()> {
             SiteVerifyError::TimeoutOrDuplicate => {}
             _ => panic!("Unexpected error"),
         },
-        e => panic!("Unexpected error: {}", e),
+        e => panic!("Unexpected error: {e}"),
     }
 
     Ok(())
@@ -162,7 +162,7 @@ async fn test_integration() -> Result<()> {
 
     assert_eq!(validated.hostname, hostname);
 
-    println!("validated: {:#?}", validated);
+    println!("validated: {validated:#?}");
 
     Ok(())
 }
