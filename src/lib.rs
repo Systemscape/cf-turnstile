@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 use connector::Connector;
-use error::{SiteVerifyErrors, TurnstileError};
+use error::{SiteVerifyErrors, TokenRejection, TurnstileError};
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::{
     Method, Request,
@@ -166,7 +166,35 @@ impl TurnstileClient {
     /// [`SiteVerifyError::TimeoutOrDuplicate`]: error::SiteVerifyError::TimeoutOrDuplicate
     ///
     /// # Errors
-    /// Returns a [`TurnstileError`] containing details about which step of the verification failed.
+    ///
+    /// The variants split by fault: [`TokenRejected`](error::TurnstileError::TokenRejected) means the visitor failed
+    /// verification, [`InvalidRequest`](error::TurnstileError::InvalidRequest) means this integration is misconfigured
+    /// (e.g. a bad secret) and retrying cannot help, and everything else means the
+    /// outcome is unknown. Most callers only need to tell the first apart from the
+    /// rest:
+    ///
+    /// ```no_run
+    /// # use cf_turnstile::{SiteVerifyRequest, TurnstileClient};
+    /// # use cf_turnstile::error::TurnstileError;
+    /// # async fn handle(client: &TurnstileClient, token: String) -> bool {
+    /// match client
+    ///     .siteverify(
+    ///         SiteVerifyRequest { response: token, ..Default::default() },
+    ///         Some(&["example.com"]),
+    ///     )
+    ///     .await
+    /// {
+    ///     Ok(_response) => true,
+    ///     Err(TurnstileError::TokenRejected(_reason)) => false,
+    ///     Err(err) => {
+    ///         // Misconfiguration, Cloudflare trouble or a transport failure:
+    ///         // log it and apply your fail-open/fail-closed policy.
+    ///         eprintln!("could not verify: {err}");
+    ///         false
+    ///     }
+    /// }
+    /// # }
+    /// ```
     ///
     /// # Panics
     /// When the http Request Builder returns an error, which should never happen and is covered by tests.
@@ -196,12 +224,13 @@ impl TurnstileClient {
 
         let response = self.http.request(request).await?;
 
-        // Read the status before the body: `Response` itself implements `Body`, so
-        // collecting the response rather than its body silently discards the status.
+        // Keep the status but do not act on it yet. Cloudflare answers an invalid
+        // secret or a malformed body with HTTP 400 *and* the actionable `error-codes`
+        // payload, so the body is the better diagnostic whenever it parses.
+        //
+        // Note `Response` itself implements `Body`, so collecting the response rather
+        // than its body would silently discard the status.
         let status = response.status();
-        if !status.is_success() {
-            return Err(TurnstileError::UnexpectedStatus(status));
-        }
 
         let body_bytes = match Limited::new(response.into_body(), MAX_RESPONSE_BYTES)
             .collect()
@@ -218,23 +247,35 @@ impl TurnstileClient {
             }
         };
 
-        let body = serde_json::from_slice::<RawSiteVerifyResponse>(&body_bytes)?;
+        let body = match serde_json::from_slice::<RawSiteVerifyResponse>(&body_bytes) {
+            Ok(body) => body,
+            // Nothing usable in the body, so fall back to reporting the status.
+            Err(err) if status.is_success() => return Err(TurnstileError::SerdeError(err)),
+            Err(_) => return Err(TurnstileError::UnexpectedStatus(status)),
+        };
 
         if !body.error_codes.is_empty() {
-            return Err(TurnstileError::SiteVerifyError(body.error_codes));
+            return Err(body.error_codes.into());
+        }
+
+        // A parseable body carrying no error codes is still not a verification if the
+        // transport disagrees: an intermediary can answer 4xx or 5xx with a
+        // success-shaped payload.
+        if !status.is_success() {
+            return Err(TurnstileError::UnexpectedStatus(status));
         }
 
         // Cloudflare always accompanies `success: false` with an error code, but do
         // not rely on it: a caller using `?` must never be handed an unverified token.
         if !body.success {
-            return Err(TurnstileError::VerificationFailed);
+            return Err(TokenRejection::Unverified.into());
         }
 
         if let Some(valid_hostnames) = valid_hostnames
             && let Some(ref body_hostname) = body.hostname
             && !valid_hostnames.contains(&body_hostname.as_str())
         {
-            return Err(TurnstileError::InvalidHostname(body_hostname.clone()));
+            return Err(TokenRejection::HostnameMismatch(body_hostname.clone()).into());
         }
 
         let transformed = SiteVerifyResponse::from(body);

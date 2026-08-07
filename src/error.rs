@@ -2,24 +2,38 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Represents a list of errors from the Turnstile API.
+/// Error returned by [`TurnstileClient::siteverify`](crate::TurnstileClient::siteverify).
+///
+/// The variants separate the three failure classes a caller handles differently:
+/// [`TokenRejected`](Self::TokenRejected) means deny the visitor,
+/// [`InvalidRequest`](Self::InvalidRequest) means fix this integration, and
+/// everything else means the outcome is unknown.
 #[derive(Debug, Error)]
 pub enum TurnstileError {
-    /// The error originated from the Turnstile API.
-    #[error("Turnstile API error: {0:?}")]
-    SiteVerifyError(SiteVerifyErrors),
+    /// The visitor's token failed verification. Deny the request.
+    #[error("token rejected: {0}")]
+    TokenRejected(#[from] TokenRejection),
 
-    /// The Turnstile API responded with a non-success HTTP status.
+    /// The verification request itself was invalid, e.g. a missing or invalid
+    /// secret key. This integration is misconfigured; retrying cannot help.
+    #[error("invalid siteverify request: {0:?}")]
+    InvalidRequest(SiteVerifyErrors),
+
+    /// The Turnstile API failed internally. The request can be retried, with the
+    /// same idempotency key (if enabled).
+    #[error("Turnstile internal error: {0:?}")]
+    InternalApiError(SiteVerifyErrors),
+
+    /// A non-success HTTP status arrived without a usable Turnstile payload.
+    ///
+    /// This usually means something other than the Turnstile API answered: a
+    /// Cloudflare incident page, or a proxy or WAF on the network path. A 5xx is
+    /// worth retrying (with the same idempotency key); a 4xx points at the network
+    /// path, since the API's own rejections carry error codes and are reported as
+    /// [`InvalidRequest`](Self::InvalidRequest) or
+    /// [`TokenRejected`](Self::TokenRejected) instead.
     #[error("Turnstile API returned HTTP status {0}")]
     UnexpectedStatus(hyper::StatusCode),
-
-    /// The Turnstile API returned a hostname that was not allowed
-    #[error("Hostname {0} did not match allowed list of hostnames")]
-    InvalidHostname(String),
-
-    /// The Turnstile API rejected the token but returned no error code.
-    #[error("Turnstile rejected the token without returning an error code")]
-    VerificationFailed,
 
     /// The response body exceeded the maximum size the client will buffer.
     #[error(
@@ -39,6 +53,51 @@ pub enum TurnstileError {
     /// The error originated from Serde.
     #[error("Serde error: {0:?}")]
     SerdeError(#[from] serde_json::Error),
+}
+
+impl From<SiteVerifyErrors> for TurnstileError {
+    /// Classify the API's error codes by fault.
+    ///
+    /// A caller-fault code wins over everything, since a misconfigured integration
+    /// invalidates any other signal. Codes unknown to this crate count as
+    /// rejections, failing closed.
+    fn from(codes: SiteVerifyErrors) -> Self {
+        let caller_fault = |code: &SiteVerifyError| {
+            matches!(
+                code,
+                SiteVerifyError::MissingInputSecret
+                    | SiteVerifyError::InvalidInputSecret
+                    | SiteVerifyError::BadRequest
+            )
+        };
+
+        if codes.iter().any(caller_fault) {
+            Self::InvalidRequest(codes)
+        } else if codes
+            .iter()
+            .all(|code| matches!(code, SiteVerifyError::InternalError))
+        {
+            Self::InternalApiError(codes)
+        } else {
+            Self::TokenRejected(TokenRejection::ErrorCodes(codes))
+        }
+    }
+}
+
+/// Why a token failed verification.
+#[derive(Debug, Clone, Error)]
+pub enum TokenRejection {
+    /// The API rejected the token with these codes.
+    #[error("{0:?}")]
+    ErrorCodes(SiteVerifyErrors),
+
+    /// The token was issued for a hostname not in `valid_hostnames`.
+    #[error("token was issued for hostname {0:?}")]
+    HostnameMismatch(String),
+
+    /// The API reported failure without naming an error code.
+    #[error("the API reported failure without naming an error code")]
+    Unverified,
 }
 
 /// Represents a list of errors from the Turnstile API.
