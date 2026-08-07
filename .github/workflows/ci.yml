@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Register Problem Matchers
         uses: r7kamura/rust-problem-matchers@v1
@@ -49,4 +49,4 @@ jobs:
         run: cargo build --release --all-features
 
       - name: Run Unit Tests
-        run: cargo make test
+        run: cargo make test-ci

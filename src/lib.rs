@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 use connector::Connector;
 use error::{SiteVerifyErrors, TurnstileError};
-use http_body_util::{BodyExt, Full};
+use http_body_util::{BodyExt, Full, Limited};
 use hyper::{
     body::Bytes,
     header::{CONTENT_TYPE, USER_AGENT},
@@ -10,6 +10,7 @@ use hyper::{
 use hyper_util::{client::legacy::Client as HyperClient, rt::TokioExecutor};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
 
 mod connector;
 pub mod error;
@@ -25,30 +26,45 @@ pub struct TurnstileClient {
 
 /// Represents a request to the Turnstile API.
 ///
+/// The `secret` parameter is not part of this struct: it is supplied by the
+/// [`TurnstileClient`] the request is sent with.
+///
 /// <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#accepted-parameters>
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct SiteVerifyRequest {
-    /// The secret key for the Turnstile API.
-    pub secret: Option<String>,
     /// The response token from the client.
     pub response: String,
-    /// The remote IP address of the client providing the respose.
-    #[serde(rename = "remote_ip")]
+    /// The remote IP address of the client providing the response.
+    #[serde(rename = "remoteip", skip_serializing_if = "Option::is_none")]
     pub remote_ip: Option<String>,
     /// The idempotency key for the request.
     #[cfg(feature = "idempotency")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency_key: Option<uuid::Uuid>,
 }
 
-/// Represents a succerssful response from the Turnstile API.
+/// The body sent to the Turnstile API: the client's secret, plus the caller's request.
 ///
-/// <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#error-codes:~:text=Successful%20validation%20response>
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Deliberately private and `Debug`-less so the secret cannot escape through a
+/// formatter. Borrows the secret rather than copying it out of the [`SecretString`].
+#[derive(Serialize)]
+struct SiteVerifyBody<'a> {
+    secret: &'a str,
+    #[serde(flatten)]
+    request: &'a SiteVerifyRequest,
+}
+
+/// Represents a successful response from the Turnstile API.
+///
+/// Deliberately neither [`Serialize`] nor [`Deserialize`]: this type is only ever
+/// produced by [`TurnstileClient::siteverify`], which returns it solely when
+/// Cloudflare verified the token. Parsing one from arbitrary JSON would yield a
+/// value that looks verified without any verification having taken place.
+///
+/// <https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#api-response-format>
+#[derive(Debug, Clone)]
 pub struct SiteVerifyResponse {
-    /// Whether the request was successful.
-    pub success: bool,
-    /// The timestamp of the request.
-    #[serde(rename = "challenge_ts")]
+    /// The timestamp of the request, from the API's `challenge_ts` field.
     pub timestamp: String,
     /// The hostname of the request.
     pub hostname: String,
@@ -61,7 +77,6 @@ pub struct SiteVerifyResponse {
 impl From<RawSiteVerifyResponse> for SiteVerifyResponse {
     fn from(raw: RawSiteVerifyResponse) -> Self {
         Self {
-            success: raw.success,
             timestamp: raw.timestamp.unwrap_or_default(),
             hostname: raw.hostname.unwrap_or_default(),
             action: raw.action.unwrap_or_default(),
@@ -70,17 +85,23 @@ impl From<RawSiteVerifyResponse> for SiteVerifyResponse {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct RawSiteVerifyResponse {
     success: bool,
     #[serde(rename = "challenge_ts")]
     timestamp: Option<String>,
     hostname: Option<String>,
-    #[serde(rename = "error-codes")]
+    /// Absent rather than empty on some responses, so treat a missing key as "no errors".
+    #[serde(rename = "error-codes", default)]
     error_codes: SiteVerifyErrors,
     action: Option<String>,
     cdata: Option<String>,
 }
+
+/// Maximum accepted size of a siteverify response body. The real endpoint returns
+/// a few hundred bytes; this only exists to bound what a hostile or broken upstream
+/// can make the client buffer.
+const MAX_RESPONSE_BYTES: usize = 64 * 1024;
 
 const TURNSTILE_USER_AGENT: &str = concat!(
     "cf-turnstile (",
@@ -92,30 +113,71 @@ const TURNSTILE_USER_AGENT: &str = concat!(
 
 impl TurnstileClient {
     /// Create a new Turnstile client.
+    #[must_use]
     pub fn new(secret: SecretString) -> Self {
         let connector = connector::create();
         let http =
             hyper_util::client::legacy::Client::builder(TokioExecutor::new()).build(connector);
 
-        Self { http, secret }
+        Self { secret, http }
     }
 
     /// Verify a Cloudflare Turnstile response.
+    ///
+    /// # Timeouts
+    ///
+    /// No timeout is applied, and hyper's client has none of its own, so a stalled
+    /// connection waits indefinitely. In a request handler that pins a task and a
+    /// connection until the process runs out of both. The latency budget belongs to
+    /// the caller, so bound it at the call site:
+    ///
+    /// ```no_run
+    /// # use cf_turnstile::{SiteVerifyRequest, SiteVerifyResponse, TurnstileClient};
+    /// # use cf_turnstile::error::TurnstileError;
+    /// # async fn verify(
+    /// #     client: &TurnstileClient,
+    /// #     request: SiteVerifyRequest,
+    /// # ) -> Option<Result<SiteVerifyResponse, TurnstileError>> {
+    /// use std::time::Duration;
+    ///
+    /// tokio::time::timeout(Duration::from_secs(5), client.siteverify(request))
+    ///     .await
+    ///     .ok()
+    /// # }
+    /// ```
+    ///
+    /// This bounds the whole operation: connect, TLS handshake, response and body read.
+    ///
+    /// # Cancellation
+    ///
+    /// Dropping the returned future is safe, but it does not un-send the request. If
+    /// that already reached Cloudflare the token is spent, since each token may only
+    /// be validated once, so retrying with the same token returns
+    /// [`SiteVerifyError::TimeoutOrDuplicate`]. To retry safely, enable the
+    /// `idempotency` feature and send the same `idempotency_key` on every attempt,
+    /// generated once before the first call.
+    ///
+    /// [`SiteVerifyError::TimeoutOrDuplicate`]: error::SiteVerifyError::TimeoutOrDuplicate
+    ///
+    /// # Errors
+    /// Returns a [`TurnstileError`] containing details about which step of the verification failed.
+    ///
+    /// # Panics
+    /// When the http Request Builder returns an error, which should never happen and is covered by tests.
     pub async fn siteverify(
         &self,
         request: SiteVerifyRequest,
     ) -> Result<SiteVerifyResponse, TurnstileError> {
-        // if request secret is none, set it:
-        let request = if request.secret.is_none() {
-            SiteVerifyRequest {
-                secret: Some(self.secret.expose_secret().to_string()),
-                ..request
-            }
-        } else {
-            request
+        let body = SiteVerifyBody {
+            secret: self.secret.expose_secret(),
+            request: &request,
         };
 
-        let body = Full::new(Bytes::from(serde_json::to_string(&request)?));
+        // The serialized body contains the secret key. Hand `Bytes` a zeroizing owner
+        // so the buffer is wiped when the request is done rather than merely freed,
+        // which is best practice, but only works on a best-effort level, not a 100% guarantee.
+        let body = Zeroizing::new(serde_json::to_vec(&body)?);
+        let body = Full::new(Bytes::from_owner(body));
 
         let request = Request::builder()
             .method(Method::POST)
@@ -127,11 +189,38 @@ impl TurnstileClient {
 
         let response = self.http.request(request).await?;
 
-        let body_bytes = response.collect().await?.to_bytes();
+        // Read the status before the body: `Response` itself implements `Body`, so
+        // collecting the response rather than its body silently discards the status.
+        let status = response.status();
+        if !status.is_success() {
+            return Err(TurnstileError::UnexpectedStatus(status));
+        }
+
+        let body_bytes = match Limited::new(response.into_body(), MAX_RESPONSE_BYTES)
+            .collect()
+            .await
+        {
+            Ok(collected) => collected.to_bytes(),
+            // `Limited` boxes the inner body's error, so anything that is not a
+            // transport failure is the length limit being hit.
+            Err(err) => {
+                return Err(err.downcast::<hyper::Error>().map_or_else(
+                    |_| TurnstileError::ResponseTooLarge,
+                    |err| TurnstileError::HyperError(*err),
+                ))
+            }
+        };
+
         let body = serde_json::from_slice::<RawSiteVerifyResponse>(&body_bytes)?;
 
         if !body.error_codes.is_empty() {
             return Err(TurnstileError::SiteVerifyError(body.error_codes));
+        }
+
+        // Cloudflare always accompanies `success: false` with an error code, but do
+        // not rely on it: a caller using `?` must never be handed an unverified token.
+        if !body.success {
+            return Err(TurnstileError::VerificationFailed);
         }
 
         let transformed = SiteVerifyResponse::from(body);
@@ -141,26 +230,29 @@ impl TurnstileClient {
 }
 
 /// Generate a new idempotency key.
+///
+/// Call this once per token, before the first attempt, and reuse the value if you
+/// retry. Generating a fresh key per attempt makes each one a separate validation,
+/// which fails once the token is spent.
 #[cfg(feature = "idempotency")]
+#[must_use]
 pub fn generate_idempotency_key() -> Option<uuid::Uuid> {
     Some(uuid::Uuid::new_v4())
 }
 
-// Some features are mutually exclusive. This is documented in the readme, but also gives a compile-time error
-#[cfg(all(feature = "native-tls", feature = "rustls-native-roots"))]
+// Turnstile's API is HTTPS only. Without a TLS backend the client would send the
+// secret key over an unencrypted connection, so refuse to build instead.
+//
+// Enabling *several* backends is not an error: Cargo features are additive, and two
+// unrelated crates in one dependency graph may each ask for a different backend. That
+// is unresolvable if the combination fails to compile, so `connector::create` picks by
+// precedence instead — see its module docs.
+#[cfg(not(any(
+    feature = "native-tls",
+    feature = "rustls-native-roots",
+    feature = "rustls-webpki-roots"
+)))]
 compile_error!(
-    r#"The features "native-tls" and "rustls-native-roots" are mutually exclusive. Please enable only one TLS backend.
-If you're enabling "native-tls", make sure to set `default-features = false` to disable the default "rustls-native-roots" feature."#
-);
-
-#[cfg(all(feature = "native-tls", feature = "rustls-webpki-roots"))]
-compile_error!(
-    r#"The features "native-tls" and "rustls-webpki-roots" are mutually exclusive. Please enable only one TLS backend.
-If you're enabling "native-tls", make sure to set `default-features = false` to disable the default "rustls-native-roots" feature."#
-);
-
-#[cfg(all(feature = "rustls-native-roots", feature = "rustls-webpki-roots"))]
-compile_error!(
-    r#"The features "rustls-native-roots" and "rustls-webpki-roots" are mutually exclusive. Please enable only one TLS backend.
-If you're enabling "native-tls", make sure to set `default-features = false` to disable the default "rustls-native-roots" feature."#
+    r#"A TLS backend is required: enable at least one of "rustls-native-roots" (the default), "rustls-webpki-roots" or "native-tls".
+Turnstile's API is HTTPS only, and without TLS the secret key would be sent in cleartext."#
 );

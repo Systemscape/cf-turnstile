@@ -1,5 +1,5 @@
 > [!NOTE]
-> This is an actively maintained frok of https://github.com/Fyko/cf-turnstile
+> This is an actively maintained fork of <https://github.com/Fyko/cf-turnstile>
 
 # cf-turnstile
 
@@ -7,17 +7,25 @@ A Rust client for [Cloudflare Turnstile].
 
 
 # Example
-```rust,ignore
+```rust,no_run
 use cf_turnstile::{SiteVerifyRequest, TurnstileClient};
 
-let client = TurnstileClient::new("my-secret".to_string().into());
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = TurnstileClient::new("my-secret".to_string().into());
 
-let validated = client.siteverify(SiteVerifyRequest {
-   response: "myresponse".to_string(),
-  ..Default::default()
-}).await?;
+    let validated = client
+        .siteverify(SiteVerifyRequest {
+            response: "myresponse".to_string(),
+            ..Default::default()
+        })
+        .await?;
 
-assert!(validated.success);
+    // `siteverify` returns `Err` unless Cloudflare verified the token.
+    println!("verified on {}", validated.hostname);
+
+    Ok(())
+}
 ```
 
 ## Features
@@ -30,23 +38,32 @@ This will enable the `idempotency_key` field on the [`SiteVerifyRequest`](struct
 
 ### TLS
 
-**Note**: not enabling any TLS feature is supported for use behind a proxy;
-Turnstile's API is HTTPS only.
+**Note**: Turnstile's API is HTTPS only, so at least one TLS feature must be enabled.
+Building without a TLS backend is a compile error.
 
 **Note**: this TLS code was taken from [twilight-http](https://github.com/twilight-rs/twilight/tree/main/twilight-http) in accordance with its license.
 
-`cf-turnstile` has features to enable HTTPS connectivity with [`hyper`]. These
-features are mutually exclusive. `rustls-native-roots` is enabled by default.
+`cf-turnstile` has features to enable HTTPS connectivity with [`hyper`].
+`rustls-native-roots` is enabled by default.
 
-#### `native`
+Enabling more than one backend is allowed rather than a build failure: Cargo features
+are additive, so two unrelated crates in the same dependency graph may each select a
+different backend, and that combination has to keep compiling. When several are
+enabled the backend is chosen by precedence:
 
-The `native` feature uses a HTTPS connector provided by [`hyper-tls`].
+1. `rustls-native-roots`
+2. `rustls-webpki-roots`
+3. `native-tls`
 
-To enable `native`, do something like this in your `Cargo.toml`:
+#### `native-tls`
+
+The `native-tls` feature uses a HTTPS connector provided by [`hyper-tls`].
+
+To enable `native-tls`, do something like this in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cf-turnstile = { default-features = false, features = ["native"], version = "0.1" }
+cf-turnstile = { default-features = false, features = ["native-tls", "hickory"], version = "0.3" }
 ```
 
 #### `rustls-native-roots`
@@ -65,11 +82,14 @@ for root certificates.
 
 This should be preferred over `rustls-native-roots` in Docker containers based on `scratch`.
 
-### Trust-DNS
+### Hickory DNS
 
-The `trust-dns` enables [`hyper-trust-dns`], which replaces the default
-`GaiResolver` in [`hyper`]. [`hyper-trust-dns`] instead provides a fully
+The `hickory` feature enables [`hyper-hickory`], which replaces the default
+`GaiResolver` in [`hyper`]. [`hyper-hickory`] instead provides a fully
 async DNS resolver on the application level.
+
+This is enabled by default. Note that `default-features = false` turns it off, so
+add it back explicitly if you want it alongside a non-default TLS backend.
 
 [Cloudflare Turnstile]: https://developers.cloudflare.com/turnstile/
 [`hyper`]: https://crates.io/crates/hyper
@@ -77,5 +97,5 @@ async DNS resolver on the application level.
 [`hyper-tls`]: https://crates.io/crates/hyper-tls
 [`rustls`]: https://crates.io/crates/rustls
 [`rustls-native-certs`]: https://crates.io/crates/rustls-native-certs
-[`hyper-trust-dns`]: https://crates.io/crates/hyper-trust-dns
+[`hyper-hickory`]: https://crates.io/crates/hyper-hickory
 [`webpki-roots`]: https://crates.io/crates/webpki-roots
