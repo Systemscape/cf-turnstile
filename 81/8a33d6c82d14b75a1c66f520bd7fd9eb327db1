@@ -1,0 +1,16 @@
+src/lib.rs
+  h_2e4fad1f0ddac3 238
+src/test.rs
+  h_2e4fad1f0ddac3 1,135,165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "818a33d6c82d14b75a1c66f520bd7fd9eb327db1",
+  "prompts": {},
+  "humans": {
+    "h_2e4fad1f0ddac3": {
+      "author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
