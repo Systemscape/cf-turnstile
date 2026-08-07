@@ -1,10 +1,11 @@
 //! <https://developers.cloudflare.com/turnstile/reference/testing/>
-use crate::{RawSiteVerifyResponse, SiteVerifyBody, SiteVerifyRequest, error::SiteVerifyError};
+use crate::{
+    RawSiteVerifyResponse, SiteVerifyBody, SiteVerifyRequest,
+    error::{SiteVerifyError, TokenRejection, TurnstileError},
+};
 
 #[cfg(any(feature = "network-tests", feature = "integration"))]
 use crate::TurnstileClient;
-#[cfg(feature = "network-tests")]
-use crate::error::TurnstileError;
 
 #[cfg(any(feature = "network-tests", feature = "integration"))]
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
@@ -70,6 +71,43 @@ fn test_unknown_error_code() {
     assert!(raw.error_codes.is_empty());
 }
 
+/// Error codes must classify by fault: caller-fault codes win over everything,
+/// internal errors are retryable, the rest (including unknown codes) reject the token.
+#[test]
+fn test_error_code_classification() {
+    use SiteVerifyError as Code;
+
+    let classify = |codes: Vec<Code>| TurnstileError::from(codes);
+
+    assert!(matches!(
+        classify(vec![Code::InvalidInputSecret]),
+        TurnstileError::InvalidRequest(_)
+    ));
+    // A bad secret invalidates any other signal.
+    assert!(matches!(
+        classify(vec![Code::InvalidInputResponse, Code::InvalidInputSecret]),
+        TurnstileError::InvalidRequest(_)
+    ));
+    assert!(matches!(
+        classify(vec![Code::InvalidInputResponse]),
+        TurnstileError::TokenRejected(TokenRejection::ErrorCodes(_))
+    ));
+    // Unknown codes fail closed.
+    assert!(matches!(
+        classify(vec![Code::Unknown]),
+        TurnstileError::TokenRejected(_)
+    ));
+    assert!(matches!(
+        classify(vec![Code::InternalError]),
+        TurnstileError::InternalApiError(_)
+    ));
+    // An internal error next to a rejection is still a rejection.
+    assert!(matches!(
+        classify(vec![Code::InternalError, Code::TimeoutOrDuplicate]),
+        TurnstileError::TokenRejected(_)
+    ));
+}
+
 #[cfg(feature = "network-tests")]
 #[tokio::test]
 async fn test_success() -> Result<()> {
@@ -129,7 +167,12 @@ async fn test_reject_invalid_hostname() -> Result<()> {
         )
         .await;
 
-    std::assert_matches!(result.err(), Some(TurnstileError::InvalidHostname(_)));
+    std::assert_matches!(
+        result.err(),
+        Some(TurnstileError::TokenRejected(
+            TokenRejection::HostnameMismatch(_)
+        ))
+    );
 
     Ok(())
 }
@@ -152,11 +195,39 @@ async fn test_fail() -> Result<()> {
     // Assert the API rejected the token, not merely that something went wrong:
     // a DNS, TLS or parse failure must not satisfy this test.
     match validated.unwrap_err() {
-        TurnstileError::SiteVerifyError(codes) => assert!(
+        TurnstileError::TokenRejected(TokenRejection::ErrorCodes(codes)) => assert!(
             matches!(codes.as_slice(), [SiteVerifyError::InvalidInputResponse]),
             "unexpected error codes: {codes:?}"
         ),
         e => panic!("expected a Turnstile API rejection, got: {e}"),
+    }
+
+    Ok(())
+}
+
+/// Cloudflare answers an invalid secret with HTTP 400 *and* the error codes, so the
+/// body must win over the status, and a bad secret must classify as our fault.
+#[cfg(feature = "network-tests")]
+#[tokio::test]
+async fn test_error_codes_survive_http_400() -> Result<()> {
+    let client = TurnstileClient::new("bogus-secret".to_string().into());
+
+    let validated = client
+        .siteverify(
+            SiteVerifyRequest {
+                response: "myresponse".to_string(),
+                ..Default::default()
+            },
+            None,
+        )
+        .await;
+
+    match validated.unwrap_err() {
+        TurnstileError::InvalidRequest(codes) => assert!(
+            matches!(codes.as_slice(), [SiteVerifyError::InvalidInputSecret]),
+            "unexpected error codes: {codes:?}"
+        ),
+        e => panic!("expected the API's error codes, got: {e}"),
     }
 
     Ok(())
@@ -179,7 +250,7 @@ async fn test_token_already_spent() -> Result<()> {
 
     assert!(validated.is_err());
     match validated.unwrap_err() {
-        TurnstileError::SiteVerifyError(e) => match e.first().unwrap() {
+        TurnstileError::TokenRejected(TokenRejection::ErrorCodes(e)) => match e.first().unwrap() {
             SiteVerifyError::TimeoutOrDuplicate => {}
             _ => panic!("Unexpected error"),
         },
