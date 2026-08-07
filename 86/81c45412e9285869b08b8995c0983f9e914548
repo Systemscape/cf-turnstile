@@ -1,0 +1,23 @@
+README.md
+  h_2e4fad1f0ddac3 18-24
+src/lib.rs
+  h_2e4fad1f0ddac3 6,127-129,131,148-151,176,217,233-239
+  h_2e4fad1f0ddac3 130
+src/test.rs
+  h_2e4fad1f0ddac3 2,6-7,79-107,117-136,143-149,171-177,207-214
+src/error.rs
+  h_2e4fad1f0ddac3 16-19
+Cargo.toml
+  h_2e4fad1f0ddac3 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8681c45412e9285869b08b8995c0983f9e914548",
+  "prompts": {},
+  "humans": {
+    "h_2e4fad1f0ddac3": {
+      "author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
