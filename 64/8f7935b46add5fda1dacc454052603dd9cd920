@@ -1,0 +1,22 @@
+Cargo.toml
+  h_2e4fad1f0ddac3 4
+README.md
+  h_2e4fad1f0ddac3 18-24
+src/error.rs
+  h_2e4fad1f0ddac3 16-19
+src/lib.rs
+  h_2e4fad1f0ddac3 6,127-130,147-150,175,216,232-238
+src/test.rs
+  h_2e4fad1f0ddac3 2,6-7,79-107,117-136,143-149,171-177,207-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "648f7935b46add5fda1dacc454052603dd9cd920",
+  "prompts": {},
+  "humans": {
+    "h_2e4fad1f0ddac3": {
+      "author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
