@@ -1,0 +1,14 @@
+justfile
+  h_2e4fad1f0ddac3 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c16d5e1122f3418fec41ba8b22c0eb96241b1c48",
+  "prompts": {},
+  "humans": {
+    "h_2e4fad1f0ddac3": {
+      "author": "JuliDi <julian@systemscape.de>"
+    }
+  }
+}
