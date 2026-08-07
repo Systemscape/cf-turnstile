@@ -1,10 +1,10 @@
 //! <https://developers.cloudflare.com/turnstile/reference/testing/>
-use crate::{error::SiteVerifyError, RawSiteVerifyResponse, SiteVerifyBody, SiteVerifyRequest};
+use crate::{RawSiteVerifyResponse, SiteVerifyBody, SiteVerifyRequest, error::SiteVerifyError};
 
-#[cfg(feature = "network-tests")]
-use crate::error::TurnstileError;
 #[cfg(any(feature = "network-tests", feature = "integration"))]
 use crate::TurnstileClient;
+#[cfg(feature = "network-tests")]
+use crate::error::TurnstileError;
 
 #[cfg(any(feature = "network-tests", feature = "integration"))]
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
@@ -76,10 +76,13 @@ async fn test_success() -> Result<()> {
     let client = TurnstileClient::new("1x0000000000000000000000000000000AA".to_string().into());
 
     let validated = client
-        .siteverify(SiteVerifyRequest {
-            response: "myresponse".to_string(),
-            ..Default::default()
-        })
+        .siteverify(
+            SiteVerifyRequest {
+                response: "myresponse".to_string(),
+                ..Default::default()
+            },
+            Some(&["example.com"]),
+        )
         .await?;
 
     // `siteverify` returns `Err` unless the token was verified, so reaching this
@@ -91,14 +94,59 @@ async fn test_success() -> Result<()> {
 
 #[cfg(feature = "network-tests")]
 #[tokio::test]
+async fn test_success_with_hostname() -> Result<()> {
+    let client = TurnstileClient::new("1x0000000000000000000000000000000AA".to_string().into());
+
+    let validated = client
+        .siteverify(
+            SiteVerifyRequest {
+                response: "myresponse".to_string(),
+                ..Default::default()
+            },
+            Some(&["example.com"]),
+        )
+        .await?;
+
+    // `siteverify` returns `Err` unless the token was verified, so reaching this
+    // point is the assertion; check the payload was parsed as well.
+    assert!(!validated.timestamp.is_empty());
+
+    Ok(())
+}
+
+#[cfg(feature = "network-tests")]
+#[tokio::test]
+async fn test_reject_invalid_hostname() -> Result<()> {
+    let client = TurnstileClient::new("1x0000000000000000000000000000000AA".to_string().into());
+
+    let result = client
+        .siteverify(
+            SiteVerifyRequest {
+                response: "myresponse".to_string(),
+                ..Default::default()
+            },
+            Some(&["evil.com"]),
+        )
+        .await;
+
+    std::assert_matches!(result.err(), Some(TurnstileError::InvalidHostname(_)));
+
+    Ok(())
+}
+
+#[cfg(feature = "network-tests")]
+#[tokio::test]
 async fn test_fail() -> Result<()> {
     let client = TurnstileClient::new("2x0000000000000000000000000000000AA".to_string().into());
 
     let validated = client
-        .siteverify(SiteVerifyRequest {
-            response: "myresponse".to_string(),
-            ..Default::default()
-        })
+        .siteverify(
+            SiteVerifyRequest {
+                response: "myresponse".to_string(),
+                ..Default::default()
+            },
+            Some(&["example.com"]),
+        )
         .await;
 
     // Assert the API rejected the token, not merely that something went wrong:
@@ -120,10 +168,13 @@ async fn test_token_already_spent() -> Result<()> {
     let client = TurnstileClient::new("3x0000000000000000000000000000000AA".to_string().into());
 
     let validated = client
-        .siteverify(SiteVerifyRequest {
-            response: "myresponse".to_string(),
-            ..Default::default()
-        })
+        .siteverify(
+            SiteVerifyRequest {
+                response: "myresponse".to_string(),
+                ..Default::default()
+            },
+            Some(&["example.com"]),
+        )
         .await;
 
     assert!(validated.is_err());
@@ -153,11 +204,14 @@ async fn test_integration() -> Result<()> {
     let client = TurnstileClient::new(secret_key.into());
 
     let validated = client
-        .siteverify(SiteVerifyRequest {
-            response,
-            idempotency_key,
-            ..Default::default()
-        })
+        .siteverify(
+            SiteVerifyRequest {
+                response,
+                idempotency_key,
+                ..Default::default()
+            },
+            Some(&["example.com"]),
+        )
         .await?;
 
     assert_eq!(validated.hostname, hostname);

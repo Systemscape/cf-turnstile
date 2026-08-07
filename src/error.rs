@@ -13,6 +13,10 @@ pub enum TurnstileError {
     #[error("Turnstile API returned HTTP status {0}")]
     UnexpectedStatus(hyper::StatusCode),
 
+    /// The Turnstile API returned a hostname that was not allowed
+    #[error("Hostname {0} did not match allowed list of hostnames")]
+    InvalidHostname(String),
+
     /// The Turnstile API rejected the token but returned no error code.
     #[error("Turnstile rejected the token without returning an error code")]
     VerificationFailed,

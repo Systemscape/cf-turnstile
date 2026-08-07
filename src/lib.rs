@@ -3,9 +3,9 @@ use connector::Connector;
 use error::{SiteVerifyErrors, TurnstileError};
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::{
+    Method, Request,
     body::Bytes,
     header::{CONTENT_TYPE, USER_AGENT},
-    Method, Request,
 };
 use hyper_util::{client::legacy::Client as HyperClient, rt::TokioExecutor};
 use secrecy::{ExposeSecret, SecretString};
@@ -124,6 +124,11 @@ impl TurnstileClient {
 
     /// Verify a Cloudflare Turnstile response.
     ///
+    /// `valid_hostnames` is an optional list of hostnames to verify against. The function
+    /// will error if the hostname returned by the Turnstile API does not match any of the
+    /// provided hostnames.
+    /// When it is None, the hostname is not verified.
+    ///
     /// # Timeouts
     ///
     /// No timeout is applied, and hyper's client has none of its own, so a stalled
@@ -140,9 +145,10 @@ impl TurnstileClient {
     /// # ) -> Option<Result<SiteVerifyResponse, TurnstileError>> {
     /// use std::time::Duration;
     ///
-    /// tokio::time::timeout(Duration::from_secs(5), client.siteverify(request))
-    ///     .await
-    ///     .ok()
+    /// tokio::time::timeout(
+    ///     Duration::from_secs(5),
+    ///     client.siteverify(request, Some(&["example.com"]))
+    /// ).await.ok()
     /// # }
     /// ```
     ///
@@ -167,6 +173,7 @@ impl TurnstileClient {
     pub async fn siteverify(
         &self,
         request: SiteVerifyRequest,
+        valid_hostnames: Option<&[&str]>,
     ) -> Result<SiteVerifyResponse, TurnstileError> {
         let body = SiteVerifyBody {
             secret: self.secret.expose_secret(),
@@ -207,7 +214,7 @@ impl TurnstileClient {
                 return Err(err.downcast::<hyper::Error>().map_or_else(
                     |_| TurnstileError::ResponseTooLarge,
                     |err| TurnstileError::HyperError(*err),
-                ))
+                ));
             }
         };
 
@@ -221,6 +228,13 @@ impl TurnstileClient {
         // not rely on it: a caller using `?` must never be handed an unverified token.
         if !body.success {
             return Err(TurnstileError::VerificationFailed);
+        }
+
+        if let Some(valid_hostnames) = valid_hostnames
+            && let Some(ref body_hostname) = body.hostname
+            && !valid_hostnames.contains(&body_hostname.as_str())
+        {
+            return Err(TurnstileError::InvalidHostname(body_hostname.clone()));
         }
 
         let transformed = SiteVerifyResponse::from(body);
