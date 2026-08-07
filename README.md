@@ -63,7 +63,7 @@ To enable `native-tls`, do something like this in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cf-turnstile = { default-features = false, features = ["native-tls", "hickory"], version = "0.3" }
+cf-turnstile = { default-features = false, features = ["native-tls"], version = "0.3" }
 ```
 
 #### `rustls-native-roots`
@@ -82,20 +82,10 @@ for root certificates.
 
 This should be preferred over `rustls-native-roots` in Docker containers based on `scratch`.
 
-### Hickory DNS
-
-The `hickory` feature enables [`hyper-hickory`], which replaces the default
-`GaiResolver` in [`hyper`]. [`hyper-hickory`] instead provides a fully
-async DNS resolver on the application level.
-
-This is enabled by default. Note that `default-features = false` turns it off, so
-add it back explicitly if you want it alongside a non-default TLS backend.
-
 [Cloudflare Turnstile]: https://developers.cloudflare.com/turnstile/
 [`hyper`]: https://crates.io/crates/hyper
 [`hyper-rustls`]: https://crates.io/crates/hyper-rustls
 [`hyper-tls`]: https://crates.io/crates/hyper-tls
 [`rustls`]: https://crates.io/crates/rustls
 [`rustls-native-certs`]: https://crates.io/crates/rustls-native-certs
-[`hyper-hickory`]: https://crates.io/crates/hyper-hickory
 [`webpki-roots`]: https://crates.io/crates/webpki-roots
