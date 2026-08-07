@@ -57,18 +57,6 @@ features:
 doc *args:
     RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features {{ args }}
 
-# Build the docs and open them in a browser.
-doc-open: (doc "--open")
-
-# Report test coverage in the terminal.
-cov *args:
-    cargo llvm-cov nextest --features {{ test_features }} {{ args }}
-
-# Write an lcov coverage report to lcov.info.
-cov-lcov:
-    cargo llvm-cov nextest --features {{ test_features }} --lcov --output-path lcov.info
-
-# Check dependencies for advisories, disallowed licenses and banned crates.
 audit:
     cargo deny check
 
@@ -76,13 +64,3 @@ audit:
 setup:
     rustup component add clippy rustfmt llvm-tools-preview
     cargo install --locked cargo-nextest cargo-hack cargo-llvm-cov cargo-deny
-
-# Profile a clean release build.
-timings:
-    cargo clean
-    cargo build --release --all-features --timings
-    @echo "Report written to target/cargo-timings/cargo-timing.html"
-
-# Remove build artifacts.
-clean:
-    cargo clean
